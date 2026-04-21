@@ -254,26 +254,39 @@ app.get('/api/players/:uuid', async (req, res) => {
 
 // WEBHOOK (from Minecraft Plugin)
 app.post('/api/webhook/player-event', async (req, res) => {
-  const { event, player, uuid, stats, timestamp } = req.body;
-  const token = req.headers.authorization?.split(' ')[1];
+  const { event, player, uuid, stats } = req.body;
+
+  // Authorization Check
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace('Bearer ', '').trim();
+
   if (token !== process.env.WEBHOOK_SECRET) {
-    return res.status(401).json({ error: 'Unauthorized webhook' });
+    return res.status(401).send(); // Unauthorized
   }
+
   try {
     if (uuid && player) {
       const update = { name: player, lastSeen: new Date() };
-      if (event === 'stats_update' && stats) {
+
+      // Update stats if provided (important for stats_update or player_quit)
+      if (stats) {
         if (stats.playtimeMinutes !== undefined) update.playtimeMinutes = stats.playtimeMinutes;
         if (stats.kills !== undefined) update.kills = stats.kills;
         if (stats.deaths !== undefined) update.deaths = stats.deaths;
         if (stats.money !== undefined) update.money = stats.money;
       }
+
+      // Create new document or update existing one
       await Player.findOneAndUpdate({ uuid }, update, { upsert: true, new: true });
     }
+
     console.log(`📡 Webhook: ${event} - ${player} (${uuid})`);
-    res.json({ success: true });
+    
+    // Send 204 No Content to inform the Java Plugin that everything was processed successfully
+    res.status(204).send();
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('❌ Webhook error:', err);
+    res.status(500).send();
   }
 });
 
