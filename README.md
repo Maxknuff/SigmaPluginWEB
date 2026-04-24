@@ -84,7 +84,7 @@ Payload:
   "uuid": "...",
   "stats": {
     "playtimeMinutes": 1200,
-    "kills": 45,
+    "kills": 67,
     "deaths": 3,
     "money": 50000
   }
